@@ -1,0 +1,83 @@
+name: Cross-platform checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    name: Python ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip numpy pandas pytest
+
+      - name: Compile source
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib
+          import py_compile
+
+          for path in pathlib.Path(".").rglob("*.py"):
+              if ".venv" not in path.parts:
+                  py_compile.compile(str(path), doraise=True)
+          print("Python compilation passed")
+          PY
+
+      - name: Run tests
+        run: python -m pytest -q
+
+  gui-import:
+    name: Qt import ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install GUI dependencies
+        run: python -m pip install --upgrade pip PySide6 numpy pandas
+
+      - name: Verify Qt application construction
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            export QT_QPA_PLATFORM=offscreen
+          fi
+          python - <<'PY'
+          from PySide6.QtWidgets import QApplication
+          from ui.main_window import MainWindow
+
+          app = QApplication([])
+          window = MainWindow()
+          assert window.windowTitle()
+          window.close()
+          app.quit()
+          print("Qt GUI construction passed")
+          PY

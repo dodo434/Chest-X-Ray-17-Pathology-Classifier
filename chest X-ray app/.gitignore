@@ -1,0 +1,12 @@
+.venv/
+.qt-libs/
+.pytest_cache/
+__pycache__/
+*.pyc
+core
+core.*
+archive.zip
+*.sqlite3
+models/
+data/
+feedback/
